@@ -1,0 +1,45 @@
+#!/usr/bin/env python
+ 
+from scapy.all import *
+import requests,json
+ 
+bridgeIP = "192.168.1.2"                    #IP Address of your Bridge
+user = "VaA-1-uG7zUmFzZHhXIjinA-I-Dr2IUjvtz-O9Pj"    #Username you generated
+dashBtn = "10:0d:7f:79:46:86"                #MAC address of your Dash button
+# lightID = "3"                                #ID of the light you want to control
+lightIDs = ["1", "2", "3"]
+
+# "Adam-Bookshelf" Is light ID:  1
+# "Adam-Overhang" Is light ID:  3
+# "Adam-Nightstand" Is light ID:  2
+
+lightState = "off"
+
+def toggle():
+	for lightID in lightIDs:
+		url = "http://"+bridgeIP+"/api/"+user+"/lights/"+lightID
+		r = requests.get(url)
+		data = json.loads(r.text)
+		if data["state"]["on"] == False:
+			print "\ton"
+			r = requests.put(url+"/state",json.dumps({'on':True}))
+		elif data["state"]["on"] == True:
+			print "\toff"
+			r = requests.put(url+"/state",json.dumps({'on':False}))
+ 
+def arp_display(pkt):
+	print "*****"
+	print "pkt"
+	if pkt[ARP].op == 1:
+		print "\tpkt[ARP].op == 1"
+		print "\thwsrc: " + pkt[ARP].hwsrc
+		if pkt[ARP].psrc == '0.0.0.0':
+			print "\tpsrc: " + pkt[ARP].psrc
+		if pkt[ARP].hwsrc == dashBtn:
+			print "\tpkt[ARP].hwsrc == dashBtn"
+			print "\tlight toggle"
+			toggle()
+ 
+print "start"
+print sniff(prn=arp_display, filter="arp", store=0, count=0)
+print "stop"
