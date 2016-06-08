@@ -3,12 +3,16 @@
 from scapy.all import *
 import requests,json
 import MySQLdb
+import time
+import datetime
  
 bridgeIP = "192.168.1.2"                    #IP Address of your Bridge
 user = "VaA-1-uG7zUmFzZHhXIjinA-I-Dr2IUjvtz-O9Pj"    #Username you generated
 # tideBtn = "10:0d:7f:79:46:86"                #MAC address of your Dash button
 tideBtn = "f0:27:2d:a7:db:b3"
 allBtn = "74:c2:46:a8:f3:b8"
+slimjimBtn = "74:c2:46:b2:88:4d"
+gatoradeBtn = "f0:27:2d:a2:2c:f1"
 # lightID = "3"                                #ID of the light you want to control
 lightIDs = ["1", "2", "3"]
 
@@ -16,7 +20,7 @@ lightIDs = ["1", "2", "3"]
 # "Adam-Overhang" Is light ID:  3
 # "Adam-Nightstand" Is light ID:  2
 
-firstStates = {
+firstState = {
 	'1': {  
 		# 'on':True,
 		'hue':47125,
@@ -170,6 +174,7 @@ db = MySQLdb.connect(host="localhost", # your host, usually localhost
                       passwd="r0b0t!", # your password
                       db="21newbury") # name of the data base
 cur=db.cursor()
+db.close()
 
 def connectDB():
     global db
@@ -192,38 +197,20 @@ def insertMsgInDb(ip, mac, os=""):
 # light states
 #-----------------
 
-def set_first():
-	print "\tset_first()"
-	url = "http://"+bridgeIP+"/api/"+user+"/lights/1"
-	r = requests.put(url+"/state",json.dumps(firstStates['1']))
-
-	url = "http://"+bridgeIP+"/api/"+user+"/lights/2"
-	r = requests.put(url+"/state",json.dumps(firstStates['2']))
-
-	url = "http://"+bridgeIP+"/api/"+user+"/lights/3"
-	r = requests.put(url+"/state",json.dumps(firstStates['3']))
-
-	url = "http://"+bridgeIP+"/api/"+user+"/lights/1"
-	r = requests.put(url+"/state",json.dumps({'on':True}))
-
-	url = "http://"+bridgeIP+"/api/"+user+"/lights/2"
-	r = requests.put(url+"/state",json.dumps({'on':True}))
-
-	url = "http://"+bridgeIP+"/api/"+user+"/lights/3"
-	r = requests.put(url+"/state",json.dumps({'on':True}))
-
 def all_off():
 	print "\tall_off()"
 	for lightID in lightIDs:
 		url = "http://"+bridgeIP+"/api/"+user+"/lights/"+lightID
+		r = requests.put(url+"/state",json.dumps({'bri': 0}))
 		r = requests.put(url+"/state",json.dumps({'on':False}))
 
 def set_state(state):
-	print "\tset_state()"
+	# print "\tset_state(" + str(state) + ")"
 	for lightID in lightIDs:
 		url = "http://"+bridgeIP+"/api/"+user+"/lights/"+lightID
+		s = requests.put(url+"/state",json.dumps({'on':True}))
 		r = requests.put(url+"/state",json.dumps(state[lightID]))
-		r = requests.put(url+"/state",json.dumps({'on':True}))
+		# s = requests.put(url+"/state",json.dumps({'on':True}))
 
 #-----------------
 # light control
@@ -235,102 +222,65 @@ def get_light_state(id):
 	data = json.loads(r.text)
 	return data
 
+def test_light_state(id, scene):
+	data = get_light_state(id)
+	state = data["state"]
+	thresh = 5
+
+	hue = True if abs(state["hue"] - scene[id]["hue"]) < (thresh *3) else False
+	sat = True if abs(state["sat"] - scene[id]["sat"]) < thresh else False
+	bri = True if abs(state["bri"] - scene[id]["bri"]) < thresh else False
+
+	result = hue and sat and bri
+
+	return result
+
 
 def toggle_low():
 	first = True
+
 	for lightID in lightIDs:
-		# print "*****"
-		# print "light ID: " + str(lightID)
-		url = "http://"+bridgeIP+"/api/"+user+"/lights/"+lightID
-		r = requests.get(url)
-		data = json.loads(r.text)
+		data = get_light_state(lightID)
 
 		if data["state"]["on"] == True:
-			# print "on"
-			# print "xy:" + str(data["state"]["xy"])
-			# print "x:" + str(data["state"]["xy"][0])
-			# print "x test:" + str(str(data["state"]["xy"][0]) != "0.1684")
-			# print "y:" + str(data["state"]["xy"][1])
-			# print "y test:" + str(str(data["state"]["xy"][1]) != "0.0417")
-
-			if lightID=="1" and (str(data["state"]["xy"][0]) != "0.1684" or str(data["state"]["xy"][1]) != "0.0417"):
-				# set_first()
-				break
-			elif lightID=="2" and (str(data["state"]["xy"][0]) != "0.645" or str(data["state"]["xy"][0]) != "0.3062"):
-				# set_first()
-				break
-			elif lightID=="3" and (str(data["state"]["xy"][0]) != "0.1684" or str(data["state"]["xy"][0]) != "0.0416"):
-				# set_first()
-				break
-			else: 
-				first = False
+			if first != False:
+				first = test_light_state(lightID, midState)
 
 	if first == True:
-		set_first()
+		print "\tset state first"
+		set_state(firstState)
 	else: 
+		print "\tset state off"
 		all_off()
 
 def toggle_bright():
 	mid = True
 	bright = True
+
 	for lightID in lightIDs:
-		# data = get_light_state(lightID)
-		url = "http://"+bridgeIP+"/api/"+user+"/lights/"+lightID
-		r = requests.get(url)
-		data = json.loads(r.text)
+		data = get_light_state(lightID)
 
-		# print data
-		print "*****"
-		print "midState[" + lightID + "][xy][0]==" + str(midState[lightID]["xy"][0])
-		print "midState[" + lightID + "][xy][1]==" + str(midState[lightID]["xy"][1])
-		print "brightState[" + lightID + "][xy][0]==" + str(brightState[lightID]["xy"][0])
-		print "brightState[" + lightID + "][xy][1]==" + str(brightState[lightID]["xy"][1])
-
-
-		# test for mid
 		if data["state"]["on"] == True:
-			if lightID=="1" and (str(data["state"]["xy"][0]) != str(midState[lightID]["xy"][0]) or str(data["state"]["xy"][1]) != str(midState[lightID]["xy"][1])):
-				print "mid 1: true"
-				# break
-			elif lightID=="2" and (str(data["state"]["xy"][0]) != str(midState[lightID]["xy"][0]) or str(data["state"]["xy"][1]) != str(midState[lightID]["xy"][1])):
-				print "mid 2: true"
-				# break
-			elif lightID=="3" and (str(data["state"]["xy"][0]) != str(midState[lightID]["xy"][0]) or str(data["state"]["xy"][1]) != str(midState[lightID]["xy"][1])):
-				print "mid 3: true"
-				# break
-			else: 
-				mid = False
-		else:
-			mid = False
-
-		# test for bright
-		if data["state"]["on"] == True:
-			if lightID=="1" and (str(data["state"]["xy"][0]) != str(brightState[lightID]["xy"][0]) or str(data["state"]["xy"][1]) != str(brightState[lightID]["xy"][1])):
-				print "bright 1: true"
-				# break
-			elif lightID=="2" and (str(data["state"]["xy"][0]) != str(brightState[lightID]["xy"][0]) or str(data["state"]["xy"][1]) != str(brightState[lightID]["xy"][1])):
-				print "bright 2: true"
-				# break
-			elif lightID=="3" and (str(data["state"]["xy"][0]) != str(brightState[lightID]["xy"][0]) or str(data["state"]["xy"][1]) != str(brightState[lightID]["xy"][1])):
-				print "bright 3: true"
-				# break
-			else: 
-				bright = False
-		else: 
-			bright = False
-
-	print "mid==" + str(mid)
-	print "bright==" + str(bright)
+			if mid != False:
+				mid = test_light_state(lightID, midState)
+			print "\ttest mid-" + str(lightID) + ": " + str(mid)
+			if bright != False:
+				bright = test_light_state(lightID, brightState)
+			print "\ttest bright-" + str(lightID) + ": " + str(bright)
 
 	if mid == False and bright == False:
-		print "set state mid"
+		print "\tset state mid"
+		set_state(midState)
+	if mid == True and bright == True:
+		print "\tset state mid"
 		set_state(midState)
 	if mid == True and bright == False:
-		print "set state bright"
+		print "\tset state bright"
 		set_state(brightState)
-	if bright == True:
-		print "set state off"
-		all_off()
+	if mid == False and bright == True:
+		print "\tset state off"
+		# all_off()
+		set_state(midState)
 
 #-----------------
 # packet sniffing
@@ -339,6 +289,9 @@ def toggle_bright():
 def arp_display(pkt):
 	print "*****"
 	print "pkt"
+	ts = time.time()
+	st = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')
+	print st
 	# print dir(pkt)
 	# print dir(pkt[ARP])
 	connectDB()
@@ -350,11 +303,11 @@ def arp_display(pkt):
 		print "\thwsrc: " + pkt[ARP].hwsrc
 		print "\tpsrc: " + pkt[ARP].psrc
 		if pkt[ARP].psrc == '0.0.0.0': # ARP Probe
-			if pkt[ARP].hwsrc == tideBtn:
-				print "\tpkt[ARP].hwsrc == tideBtn"
+			if pkt[ARP].hwsrc == slimjimBtn:
+				print "\tpkt[ARP].hwsrc == slimjimBtn"
 				toggle_low()
-			if pkt[ARP].hwsrc == allBtn:
-				print "\tpkt[ARP].hwsrc == allBtn"
+			if pkt[ARP].hwsrc == gatoradeBtn:
+				print "\tpkt[ARP].hwsrc == gatoradeBtn"
 				toggle_bright()
  
 print "start"
