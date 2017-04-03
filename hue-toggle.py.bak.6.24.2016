@@ -5,29 +5,164 @@ import requests,json
 import MySQLdb
 import time
 import datetime
-from states import *
  
-bridgeIP = "192.168.1.2"
-user = "VaA-1-uG7zUmFzZHhXIjinA-I-Dr2IUjvtz-O9Pj"
-
-# tideBtn = "f0:27:2d:a7:db:b3"	# RIP tide button
+bridgeIP = "192.168.1.2"                    #IP Address of your Bridge
+user = "VaA-1-uG7zUmFzZHhXIjinA-I-Dr2IUjvtz-O9Pj"    #Username you generated
+# tideBtn = "10:0d:7f:79:46:86"                #MAC address of your Dash button
+tideBtn = "f0:27:2d:a7:db:b3"
 allBtn = "74:c2:46:a8:f3:b8"
 slimjimBtn = "74:c2:46:b2:88:4d"
 gatoradeBtn = "f0:27:2d:a2:2c:f1"
-enjoylifeBtn = "44:65:0d:a0:b2:b9"
-onBtn = "44:65:0d:d5:40:29"
-
-lightIDs = ["1", "2", "3", "4", "5"]
-
-bedroomLightIDs = ["1", "2", "3"]
-livingroomLightIDs = ["4", "5"]
+# lightID = "3"                                #ID of the light you want to control
+lightIDs = ["1", "2", "3"]
 
 # "Adam-Bookshelf" Is light ID:  1
-# "Adam-Nightstand" Is light ID:  2
 # "Adam-Overhang" Is light ID:  3
+# "Adam-Nightstand" Is light ID:  2
 
-# "Livingroom - Adam's side" is lightID: 4
-# "Livingroom - Chris's side" is lightID: 5
+firstState = {
+	'1': {  
+		# 'on':True,
+		'hue':47125,
+		'colormode':'xy',
+		'effect':'none',
+		'alert':'none',
+		'xy':[  
+		 0.1684,
+		 0.0416
+		],
+		'reachable':True,
+		'bri':37,
+		'ct':153,
+		'sat':253
+	},
+	'2': {  
+      # 'on':True,
+      'hue':64488,
+      'colormode':'xy',
+      'effect':'none',
+      'alert':'none',
+      'xy':[  
+         0.6451,
+         0.3062
+      ],
+      'reachable':True,
+      'bri':38,
+      'ct':153,
+      'sat':253
+	},
+	'3': {
+      # 'on':True,
+      'hue':47125,
+      'colormode':'xy',
+      'effect':'none',
+      'alert':'none',
+      'xy':[  
+         0.1684,
+         0.0416
+      ],
+      'reachable':True,
+      'bri':37,
+      'ct':153,
+      'sat':253
+	}
+}
+
+midState = {
+	'1': {  
+		# 'on':True,
+		'bri':48,
+		'hue':566,
+		'sat':228,
+		'effect':'none',
+		'xy':[  
+			0.6395,
+			0.3315
+		],
+		'ct':153,
+		'alert':'none',
+		'colormode':'xy',
+		'reachable':True
+	},
+	'2': {  
+		# 'on':True,
+		'bri':128,
+		'hue':44173,
+		'sat':252,
+		'effect':'none',
+		'xy':[  
+			0.2014,
+			0.1073
+		],
+		'ct':153,
+		'alert':'none',
+		'colormode':'xy',
+		'reachable':True
+	},
+	'3': {
+		# 'on':True,
+		'bri':136,
+		'hue':54526,
+		'sat':209,
+		'effect':'none',
+		'xy':[  
+			0.3732,
+			0.1931
+		],
+		'ct':239,
+		'alert':'none',
+		'colormode':'xy',
+		'reachable':True
+	}
+}
+
+brightState = {
+	'1': {
+		# 'on':True,
+		'bri':254,
+		'hue':33129,
+		'sat':52,
+		'effect':'none',
+		'xy':[  
+			0.3689,
+			0.3714
+		],
+		'ct':231,
+		'alert':'none',
+		'colormode':'xy',
+		'reachable':True
+	},
+	'2': {
+		# 'on':True,
+		'bri':254,
+		'hue':33129,
+		'sat':52,
+		'effect':'none',
+		'xy':[  
+			0.3689,
+			0.3714
+		],
+		'ct':231,
+		'alert':'none',
+		'colormode':'xy',
+		'reachable':True
+	},
+	'3': {
+		# 'on':True,
+		'bri':254,
+		'hue':33129,
+		'sat':52,
+		'effect':'none',
+		'xy':[  
+			0.3689,
+			0.3714
+		],
+		'ct':231,
+		'alert':'none',
+		'colormode':'xy',
+		'reachable':True
+	}
+}
 
 
 #-----------------
@@ -62,16 +197,16 @@ def insertMsgInDb(ip, mac, os=""):
 # light states
 #-----------------
 
-def lights_off(lights):
-	# print "\tlights_off()"
-	for lightID in lights:
+def all_off():
+	# print "\tall_off()"
+	for lightID in lightIDs:
 		url = "http://"+bridgeIP+"/api/"+user+"/lights/"+lightID
-		#r = requests.put(url+"/state",json.dumps({'bri': 0}))
+		r = requests.put(url+"/state",json.dumps({'bri': 0}))
 		r = requests.put(url+"/state",json.dumps({'on':False}))
 
-def set_state(state, lights):
+def set_state(state):
 	# print "\tset_state(" + str(state) + ")"
-	for lightID in lights:
+	for lightID in lightIDs:
 		url = "http://"+bridgeIP+"/api/"+user+"/lights/"+lightID
 		s = requests.put(url+"/state",json.dumps({'on':True}))
 		r = requests.put(url+"/state",json.dumps(state[lightID]))
@@ -83,7 +218,6 @@ def set_state(state, lights):
 
 def get_light_state(id):
 	url = "http://"+bridgeIP+"/api/"+user+"/lights/"+id
-	print url
 	r = requests.get(url)
 	data = json.loads(r.text)
 	return data
@@ -107,14 +241,8 @@ def test_light_state(id, scene):
 	hue = True if abs(state["hue"] - scene[id]["hue"]) < (thresh *3) else False
 	sat = True if abs(state["sat"] - scene[id]["sat"]) < thresh else False
 	bri = True if abs(state["bri"] - scene[id]["bri"]) < thresh else False
-	on = True if state["on"] == True else False
 
-	# print "hue: " + str(hue)
-	# print "sat: " + str(sat)
-	# print "bri: " + str(bri)
-	# print "on: " + str(on)
-
-	result = hue and sat and bri and on
+	result = hue and sat and bri
 
 	return result
 
@@ -122,32 +250,25 @@ def test_light_state(id, scene):
 def toggle_low():
 	first = True
 
-	for lightID in bedroomLightIDs:
+	for lightID in lightIDs:
 		data = get_light_state(lightID)
 
-		print 'data["state"]["on"]: ' + str(data["state"]["on"])
-
 		if data["state"]["on"] == True:
-			# print "on==True"
 			if first != False:
 				first = test_light_state(lightID, firstState)
-		else:
-			# print "on==False"
-			first = False
-			
-	# print "first==" + str(first)
+
 	if first == True:
 		print "\t*****set state off"
-		lights_off(bedroomLightIDs)
+		all_off()
 	else: 
 		print "\t*****set state first"
-		set_state(firstState, bedroomLightIDs)
+		set_state(firstState)
 
 def toggle_bright():
 	mid = True
 	bright = True
 
-	for lightID in bedroomLightIDs:
+	for lightID in lightIDs:
 		data = get_light_state(lightID)
 
 		if data["state"]["on"] == True:
@@ -160,52 +281,17 @@ def toggle_bright():
 
 	if mid == False and bright == False:
 		print "\t*****set state mid"
-		set_state(midState, bedroomLightIDs)
+		set_state(midState)
 	if mid == True and bright == True:
 		print "\t*****set state mid"
-		set_state(midState, bedroomLightIDs)
+		set_state(midState)
 	if mid == True and bright == False:
 		print "\t*****set state bright"
-		set_state(brightState, bedroomLightIDs)
+		set_state(brightState)
 	if mid == False and bright == True:
 		print "\t*****set state mid"
-		# lights_off(bedroomLightIDs)
-		lights_off(bedroomLightIDs)
-
-def toggle_livingroom():
-	livingroom_normal = True
-	livingroom_movie = True
-
-	for lightID in livingroomLightIDs:
-		data = get_light_state(lightID)
-
-		if data["state"]["on"] == True:
-			if livingroom_normal != False:
-				livingroom_normal = test_light_state(lightID, livingroom_normalState)
-			# print "\ttest mid-" + str(lightID) + ": " + str(mid)
-			if livingroom_movie != False:
-				livingroom_movie = test_light_state(lightID, livingroom_movieState)
-			# print "\ttest livingroom_movie-" + str(lightID) + ": " + str(livingroom_movie)
-
-	if livingroom_normal == False and livingroom_movie == False:
-		print "\t*****set state livingroom_normal"
-		set_state(livingroom_normalState, livingroomLightIDs)
-	if livingroom_normal == True and livingroom_movie == True:
-		# this should be off for living room lights
-		print "\t*****set state livingroom_normal"
-		set_state(livingroom_normalState, livingroomLightIDs)
-	if livingroom_normal == True and livingroom_movie == False:
-		print "\t*****set state livingroom_movie"
-		set_state(livingroom_movieState, livingroomLightIDs)
-	if livingroom_normal == False and livingroom_movie == True:
-		# this should be off for living room lights
-		print "\t*****set state livingroom_normal"
-		# lights_off(bedroomLightIDs)
-		lights_off(livingroomLightIDs)
-
-
-
-	return
+		# all_off()
+		set_state(midState)
 
 #-----------------
 # packet sniffing
@@ -219,25 +305,22 @@ def arp_display(pkt):
 	print st
 	# print dir(pkt)
 	# print dir(pkt[ARP])
-	# connectDB()
-	# insertMsgInDb(pkt[ARP].psrc, pkt[ARP].hwsrc)
-	# db.commit()
-	# closeDB()
+	connectDB()
+	insertMsgInDb(pkt[ARP].psrc, pkt[ARP].hwsrc)
+	db.commit()
+	closeDB()
 	if pkt[ARP].op == 1:
 		print "*****"
 		print "\thwsrc: " + pkt[ARP].hwsrc
 		print "\tpsrc: " + pkt[ARP].psrc
 		# if pkt[ARP].psrc == '0.0.0.0': # ARP Probe
-		if pkt[ARP].hwsrc == enjoylifeBtn:
-			print "\tpkt[ARP].hwsrc == enjoylifeBtn"
+		if pkt[ARP].hwsrc == slimjimBtn:
+			print "\tpkt[ARP].hwsrc == slimjimBtn"
 			toggle_low()
 		if pkt[ARP].hwsrc == gatoradeBtn:
 			print "\tpkt[ARP].hwsrc == gatoradeBtn"
 			toggle_bright()
-		if pkt[ARP].hwsrc == onBtn:
-			print "\tpkt[ARP].hwsrc == onBtn"
-			toggle_livingroom()
-
+ 
 print "start"
 print sniff(prn=arp_display, filter="arp", store=0, count=0)
 print "stop"

@@ -6,7 +6,7 @@ import MySQLdb
 import time
 import datetime
  
-bridgeIP = "192.168.1.2"                    #IP Address of your Bridge
+bridgeIP = "192.168.1.3"                    #IP Address of your Bridge
 user = "VaA-1-uG7zUmFzZHhXIjinA-I-Dr2IUjvtz-O9Pj"    #Username you generated
 # tideBtn = "10:0d:7f:79:46:86"                #MAC address of your Dash button
 tideBtn = "f0:27:2d:a7:db:b3"
@@ -198,10 +198,10 @@ def insertMsgInDb(ip, mac, os=""):
 #-----------------
 
 def all_off():
-	print "\tall_off()"
+	# print "\tall_off()"
 	for lightID in lightIDs:
 		url = "http://"+bridgeIP+"/api/"+user+"/lights/"+lightID
-		r = requests.put(url+"/state",json.dumps({'bri': 0}))
+		#r = requests.put(url+"/state",json.dumps({'bri': 0}))
 		r = requests.put(url+"/state",json.dumps({'on':False}))
 
 def set_state(state):
@@ -218,6 +218,7 @@ def set_state(state):
 
 def get_light_state(id):
 	url = "http://"+bridgeIP+"/api/"+user+"/lights/"+id
+	print url
 	r = requests.get(url)
 	data = json.loads(r.text)
 	return data
@@ -227,11 +228,28 @@ def test_light_state(id, scene):
 	state = data["state"]
 	thresh = 5
 
+	# print "id: " + id
+	# print "test - hue: " + str(abs(state["hue"] - scene[id]["hue"]))
+	# print "*state: " + str(state["hue"])
+	# print "*scene: " + str(scene[id]["hue"])
+	# print "test - sat: " + str(abs(state["sat"] - scene[id]["sat"]))
+	# print "*state: " + str(state["sat"])
+	# print "*scene: " + str(scene[id]["sat"])
+	# print "test - bri: " + str(abs(state["bri"] - scene[id]["bri"]))
+	# print "*state: " + str(state["bri"])
+	# print "*scene: " + str(scene[id]["bri"])
+
 	hue = True if abs(state["hue"] - scene[id]["hue"]) < (thresh *3) else False
 	sat = True if abs(state["sat"] - scene[id]["sat"]) < thresh else False
 	bri = True if abs(state["bri"] - scene[id]["bri"]) < thresh else False
+	on = True if state["on"] == True else False
 
-	result = hue and sat and bri
+	# print "hue: " + str(hue)
+	# print "sat: " + str(sat)
+	# print "bri: " + str(bri)
+	# print "on: " + str(on)
+
+	result = hue and sat and bri and on
 
 	return result
 
@@ -242,16 +260,23 @@ def toggle_low():
 	for lightID in lightIDs:
 		data = get_light_state(lightID)
 
-		if data["state"]["on"] == True:
-			if first != False:
-				first = test_light_state(lightID, midState)
+		print 'data["state"]["on"]: ' + str(data["state"]["on"])
 
+		if data["state"]["on"] == True:
+			# print "on==True"
+			if first != False:
+				first = test_light_state(lightID, firstState)
+		else:
+			# print "on==False"
+			first = False
+			
+	# print "first==" + str(first)
 	if first == True:
-		print "\tset state first"
-		set_state(firstState)
-	else: 
-		print "\tset state off"
+		print "\t*****set state off"
 		all_off()
+	else: 
+		print "\t*****set state first"
+		set_state(firstState)
 
 def toggle_bright():
 	mid = True
@@ -263,22 +288,22 @@ def toggle_bright():
 		if data["state"]["on"] == True:
 			if mid != False:
 				mid = test_light_state(lightID, midState)
-			print "\ttest mid-" + str(lightID) + ": " + str(mid)
+			# print "\ttest mid-" + str(lightID) + ": " + str(mid)
 			if bright != False:
 				bright = test_light_state(lightID, brightState)
-			print "\ttest bright-" + str(lightID) + ": " + str(bright)
+			# print "\ttest bright-" + str(lightID) + ": " + str(bright)
 
 	if mid == False and bright == False:
-		print "\tset state mid"
+		print "\t*****set state mid"
 		set_state(midState)
 	if mid == True and bright == True:
-		print "\tset state mid"
+		print "\t*****set state mid"
 		set_state(midState)
 	if mid == True and bright == False:
-		print "\tset state bright"
+		print "\t*****set state bright"
 		set_state(brightState)
 	if mid == False and bright == True:
-		print "\tset state off"
+		print "\t*****set state mid"
 		# all_off()
 		set_state(midState)
 
@@ -294,21 +319,21 @@ def arp_display(pkt):
 	print st
 	# print dir(pkt)
 	# print dir(pkt[ARP])
-	connectDB()
-	insertMsgInDb(pkt[ARP].psrc, pkt[ARP].hwsrc)
-	db.commit()
-	closeDB()
+	# connectDB()
+	# insertMsgInDb(pkt[ARP].psrc, pkt[ARP].hwsrc)
+	# db.commit()
+	# closeDB()
 	if pkt[ARP].op == 1:
 		print "*****"
 		print "\thwsrc: " + pkt[ARP].hwsrc
 		print "\tpsrc: " + pkt[ARP].psrc
-		if pkt[ARP].psrc == '0.0.0.0': # ARP Probe
-			if pkt[ARP].hwsrc == slimjimBtn:
-				print "\tpkt[ARP].hwsrc == slimjimBtn"
-				toggle_low()
-			if pkt[ARP].hwsrc == gatoradeBtn:
-				print "\tpkt[ARP].hwsrc == gatoradeBtn"
-				toggle_bright()
+		# if pkt[ARP].psrc == '0.0.0.0': # ARP Probe
+		if pkt[ARP].hwsrc == slimjimBtn:
+			print "\tpkt[ARP].hwsrc == slimjimBtn"
+			toggle_low()
+		if pkt[ARP].hwsrc == gatoradeBtn:
+			print "\tpkt[ARP].hwsrc == gatoradeBtn"
+			toggle_bright()
  
 print "start"
 print sniff(prn=arp_display, filter="arp", store=0, count=0)
